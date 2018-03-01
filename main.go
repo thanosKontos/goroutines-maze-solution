@@ -3,8 +3,8 @@ package main
 import (
 	"errors"
 	"fmt"
-	"sync"
 	"os"
+	"sync"
 )
 
 const (
@@ -13,6 +13,7 @@ const (
 	down
 	left
 )
+
 var posChan = make(chan position, 500)
 var doneChan = make(chan []string)
 var mutex sync.Mutex
