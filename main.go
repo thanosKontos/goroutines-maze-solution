@@ -14,7 +14,7 @@ const (
 	left
 )
 
-var posChan = make(chan position, 500)
+var posChan = make(chan position)
 var doneChan = make(chan []string)
 var mutex sync.Mutex
 var visited = make(map[string][]string)
