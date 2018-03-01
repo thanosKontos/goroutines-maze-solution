@@ -17,7 +17,6 @@ var posChan = make(chan position, 500)
 var doneChan = make(chan []string)
 var mutex sync.Mutex
 var visited = make(map[string][]string)
-var maze mazeType
 
 func main() {
 	filename := os.Args[1]

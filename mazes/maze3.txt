@@ -1,0 +1,6 @@
+  S x  x x
+x  x  x xx
+x   x   xx
+xx  x  xxx
+xx        
+xx    Fxxx
