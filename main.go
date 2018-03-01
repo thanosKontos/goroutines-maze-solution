@@ -3,33 +3,9 @@ package main
 import (
 	"errors"
 	"fmt"
-	"strconv"
-	"strings"
 	"sync"
+	"os"
 )
-
-func main() {
-	names := []string{"1 0"}
-	visited["1 0"] = append(visited["1 0"], "1 0")
-	sendScoutsToAllDirections(position{1, 0, false, names})
-
-	for {
-		select {
-		case position := <-posChan:
-			if position.isEmpty() {
-				sendScoutsToAllDirections(position)
-			}
-		case <-doneChan:
-			fmt.Println("quit")
-			return
-		}
-	}
-}
-
-var posChan = make(chan position, 500)
-var doneChan = make(chan struct{})
-
-var mutex sync.Mutex
 
 const (
 	up = iota
@@ -37,61 +13,64 @@ const (
 	down
 	left
 )
-
-type position struct {
-	x       int
-	y       int
-	visited bool
-	route   []string
-}
-
-var maze = [][]string{
-	{"x", " ", "x", "x", " "},
-	{"S", " ", "x", " ", " "},
-	{"x", " ", " ", " ", " "},
-	{"x", " ", " ", "x", " "},
-	{" ", " ", "x", "F", " "},
-}
-
+var posChan = make(chan position, 500)
+var doneChan = make(chan []string)
+var mutex sync.Mutex
 var visited = make(map[string][]string)
+var maze mazeType
 
-func sendScoutsToAllDirections(from position) {
-	if to, err := canMove(up, from); err == nil {
-		go move(from, to)
-	}
+func main() {
+	filename := os.Args[1]
+	maze := createMaze(filename)
+	startPosition := maze.findStartPosition()
 
-	if to, err := canMove(right, from); err == nil {
-		go move(from, to)
-	}
+	visited[startPosition.String()] = append(visited[startPosition.String()], startPosition.String())
+	sendScoutsToAllDirections(startPosition, maze)
 
-	if to, err := canMove(down, from); err == nil {
-		go move(from, to)
-	}
-
-	if to, err := canMove(left, from); err == nil {
-		go move(from, to)
+	for {
+		select {
+		case position := <-posChan:
+			if position.isEmpty(maze) {
+				sendScoutsToAllDirections(position, maze)
+			}
+		case finalRoute := <-doneChan:
+			fmt.Println(finalRoute)
+			return
+		}
 	}
 }
 
-func move(from, to position) {
-	keyFrom := coordinatesToString(from.x, from.y)
-	keyTo := coordinatesToString(to.x, to.y)
+func sendScoutsToAllDirections(from position, maze mazeType) {
+	if to, err := canMove(up, from, maze); err == nil {
+		go move(from, to, maze)
+	}
 
+	if to, err := canMove(right, from, maze); err == nil {
+		go move(from, to, maze)
+	}
+
+	if to, err := canMove(down, from, maze); err == nil {
+		go move(from, to, maze)
+	}
+
+	if to, err := canMove(left, from, maze); err == nil {
+		go move(from, to, maze)
+	}
+}
+
+func move(from, to position, maze mazeType) {
 	mutex.Lock()
-	visited[keyTo] = append(visited[keyFrom], keyTo)
+	visited[to.String()] = append(visited[from.String()], to.String())
 	mutex.Unlock()
 
-	//fmt.Println("Visited " + keyTo)
-
-	if to.getValue() == "F" {
-		fmt.Println(strings.Join(visited[keyTo], "\n"))
-		doneChan <- struct{}{}
+	if to.getValue(maze) == mazeFinish {
+		doneChan <- visited[to.String()]
 	} else {
-		sendScoutsToAllDirections(to)
+		sendScoutsToAllDirections(to, maze)
 	}
 }
 
-func canMove(direction int, current position) (position, error) {
+func canMove(direction int, current position, maze mazeType) (position, error) {
 	var newX, newY int
 
 	switch direction {
@@ -108,15 +87,13 @@ func canMove(direction int, current position) (position, error) {
 	newPosition := position{
 		newX,
 		newY,
-		false,
-		current.route,
 	}
 
-	if newPosition.outOfBounds() {
+	if newPosition.outOfBounds(maze) {
 		return position{}, errors.New("OutOfBounds")
 	}
 
-	if newPosition.isWall() {
+	if newPosition.isWall(maze) {
 		return position{}, errors.New("Wall")
 	}
 
@@ -124,35 +101,13 @@ func canMove(direction int, current position) (position, error) {
 		return position{}, errors.New("Visited")
 	}
 
-	newPosition.route = append(current.route, coordinatesToString(newX, newY))
-
 	return newPosition, nil
-}
-
-func (p *position) getValue() string {
-	return maze[p.x][p.y]
-}
-
-func (p *position) outOfBounds() bool {
-	return p.x < 0 || p.y < 0 || p.x > len(maze)-1 || p.y > len(maze[1])-1
-}
-
-func (p *position) isWall() bool {
-	return maze[p.x][p.y] == "x"
-}
-
-func (p *position) isEmpty() bool {
-	return maze[p.x][p.y] == " "
 }
 
 func (p *position) isVisited() bool {
 	mutex.Lock()
-	_, ok := visited[coordinatesToString(p.x, p.y)]
+	_, ok := visited[p.String()]
 	mutex.Unlock()
 
 	return ok
-}
-
-func coordinatesToString(x, y int) string {
-	return strconv.Itoa(x) + " " + strconv.Itoa(y)
 }
