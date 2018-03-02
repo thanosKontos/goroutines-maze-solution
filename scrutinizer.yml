@@ -1,7 +1,0 @@
-build:
-    environment:
-        go: go1.9.2
-
-    tests:
-        override:
-            - golint-run
