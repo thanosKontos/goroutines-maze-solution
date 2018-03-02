@@ -63,9 +63,9 @@ func TestWall(t *testing.T) {
 
 func TestPositionToString(t *testing.T) {
 	cases := map[string]position{
-		"1:0": position{1, 0},
-		"3:1": position{3, 1},
-		"4:3": position{4, 3},
+		"1:0":  position{1, 0},
+		"3:1":  position{3, 1},
+		"4:3":  position{4, 3},
 		"14:3": position{14, 3},
 	}
 
